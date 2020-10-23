@@ -1,15 +1,15 @@
 # Copyright (C) 2020 BasedUser
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -23,7 +23,7 @@
 # The Sheet Music System
 # A certain person, you perhaps, may want to include this script to make your items participate
 # in various songs. For example, making a clock play a harp sound, or some other item playing
-# yet another sound. 
+# yet another sound.
 
 # This manual won't cover items making sounds on their own when interacted with. This covers the
 # book-based MIDI-like structure, how one can make their own music, and what constraints the
@@ -46,8 +46,8 @@
 # The playback mechanism doesn't support any old format, it only supports a simple, rudimentary
 # format created by myself. Shockingly, it's effective. The format follows like this:
 #
-#  delay after note plays (ticks) pitch in clicks slot of instrument volume
-#             0                  ,      9.5      ,         1        ,  1   ;
+#  delay after note plays (ticks), pitch in clicks, slot of instrument, volume;
+#             0                  ,       9.5      ,         1         ,   1   ;
 #
 # Due to the parser's elementary nature, no whitespace is allowed. However, you are allowed to
 # cut inbetween a song to the next page, so long as every note is 4 values long and every value
@@ -69,24 +69,21 @@ sheetMusicHandler:
   type: world
   debug: false
   events:
-    after player left clicks with stick:
+    after player left clicks block with:stick:
+    - if !<server.has_flag[instruments_loaded]||true>:
+      - stop
     - if !<player.has_flag[playingSheetMusic]> && <player.item_in_offhand.is_book>:
       - flag player playingSheetMusic:<queue>
       - flag player playedSheetMusic:<player.item_in_offhand.book_pages.unseparated.strip_color.split[;]>
       - foreach <player.flag[playedSheetMusic].get[1]> as:note:
         - if <player.item_in_offhand.is_book>:
           - if <[note].split[,].size> == 4:
-            - define pause:<[note].split[,].get[1]>
-            - define pitch:<[note].split[,].get[2]>
-            - define sound:<[note].split[,].get[3]>
-            - define volume:<[note].split[,].get[4]>
-            - if <player.inventory.slot[<[sound]>].has_nbt[custom]>:
-              - playsound <player.location> sound:<player.inventory.slot[<[sound]>].nbt[sound]> custom volume:<[volume]> pitch:<element[1.05946].power[<[pitch]>].div[2]> sound_category:records
-            - else:
-              - playsound <player.location> sound:<player.inventory.slot[<[sound]>].nbt[sound]> volume:<[volume]> pitch:<element[1.05946].power[<[pitch]>].div[2]> sound_category:records
-            - playeffect effect:NOTE at:<player.location.add[0,2,0].add[<util.random.decimal[-0.5].to[0.5]>,<util.random.decimal[0].to[0.5]>,<util.random.decimal[-0.5].to[0.5]>]> offset:<element[1.05946].power[<[pitch]>].div[2]> quantity:0 data:1
-            - if <[pause].is[==].to[0].is[==].to[false]>:
-              - wait <[pause]>t
+            - define pause <[note].split[,].get[1]>
+            - define pitch <[note].split[,].get[2]>
+            - define sound <[note].split[,].get[3]>
+            - define volume <[note].split[,].get[4]>
+            - inject play_note_task def:<[pitch]>|<[volume]>|<player.inventory.slot[<[sound]>].nbt[sound]>|<player.inventory.slot[<[sound]>].nbt[custom]||false>|<player.location>
+            - wait <[pause]>t
         - else:
           - flag player playingSheetMusic:!
           - flag player playedSheetMusic:!
@@ -95,3 +92,16 @@ sheetMusicHandler:
       - queue <player.flag[playingSheetMusic]> clear
     - flag player playingSheetMusic:!
     - flag player playedSheetMusic:!
+
+# https://github.com/Soumeh/Denizen_Scripts/blob/master/instruments.dsc
+
+instrument_dependency_loader:
+  type: world
+  debug: false
+  events:
+    on script reload:
+    - if <server.scripts.parse[name].contains[instrument_handler]>:
+      - flag server instruments_loaded:true
+    - else:
+      - debug log "Dependency missing, make sure that your instruments.dsc file exists and is not corrupted"
+      - flag server instruments_loaded:false
