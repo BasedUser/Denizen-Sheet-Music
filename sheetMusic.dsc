@@ -69,7 +69,7 @@ sheetMusicHandler:
   type: world
   debug: false
   events:
-    after player left clicks with stick:
+    after player left clicks block with stick:
     - if !<player.has_flag[playingSheetMusic]> && <player.item_in_offhand.is_book>:
       - flag player playingSheetMusic:<queue>
       - flag player playedSheetMusic:<player.item_in_offhand.book_pages.unseparated.strip_color.split[;]>
